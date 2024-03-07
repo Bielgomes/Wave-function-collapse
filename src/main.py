@@ -5,9 +5,10 @@ from classes.tile import Tile
 
 if __name__ == '__main__':
   manager = WaveFunctionCollapseManager(
-    grid_size=20,
+    grid_size=50,
     width=800,
-    height=800
+    height=800,
+    show_possibilities_remain=True
   )
 
   path = "./src/tiles/circuit-board"

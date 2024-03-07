@@ -24,6 +24,7 @@ class WaveFunctionCollapseManager:
     self._show_possibilities_remain = show_possibilities_remain
     self._show_cells_border = show_cells_border
 
+    self._last_collapsed = None
 
     self._tile_images = []
     self._tiles: List[Tile] = []
@@ -90,14 +91,14 @@ class WaveFunctionCollapseManager:
     cell = random.choice(min_entropy_cells)
     cell.collapse()
 
+    self._last_collapsed = cell
+
   def _generate_rules(self) -> None:
     for tile in self.tiles:
       tile.analyze_edges(self.tiles)
 
-  def _generate_frame(self) -> np.ndarray:
+  def _generate_frame(self, background) -> np.ndarray:
     self._collapse()
-
-    frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
 
     w = self.width // self.grid_size
     h = self.height // self.grid_size
@@ -105,31 +106,37 @@ class WaveFunctionCollapseManager:
     for i in range(self.grid_size):
       for j in range(self.grid_size):
         cell = self.grid[i][j]
-        if cell.collapsed:
+        if cell == self._last_collapsed:
+          self._last_collapsed = None
+
           tile = cell.possible_tiles[0].image
-          tile = cv2.cvtColor(np.array(tile), cv2.COLOR_RGB2BGR)  # Convertendo de RGB para BGR
+          tile = cv2.cvtColor(np.array(tile), cv2.COLOR_RGB2BGR)
           tile_resized = cv2.resize(tile, (w, h))
-          frame[i*h:(i+1)*h, j*w:(j+1)*w] = tile_resized
+          background[i*h:(i+1)*h, j*w:(j+1)*w] = tile_resized
         else:
           if self._show_cells_border:
-            cv2.rectangle(frame, (j*w, i*h), ((j+1)*w, (i+1)*h), (255, 255, 255), 1)
+            cv2.rectangle(background, (j*w, i*h), ((j+1)*w, (i+1)*h), (255, 255, 255), 1)
 
-          if self._show_possibilities_remain:
-            font_scale = min(w, h) / 50  # Ajuste o valor 50 conforme necessário para o tamanho desejado
-            font_thickness = max(1, int(font_scale))  # Garante que a espessura da fonte seja pelo menos 1
+          if self._show_possibilities_remain and not cell.collapsed:
+            background[i*h:(i+1)*h, j*w:(j+1)*w] = (0, 0, 0)
+
+            font_scale = min(w, h) / 50
+            font_thickness = max(1, int(font_scale))
             font = cv2.FONT_HERSHEY_SIMPLEX
             text = str(len(cell.possible_tiles))
             text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
             text_x = int(j*w + (w - text_size[0]) / 2)
             text_y = int(i*h + (h + text_size[1]) / 2)
-            cv2.putText(frame, text, (text_x, text_y), font, font_scale, (255, 255, 255), font_thickness)
 
-    return frame
+            cv2.putText(background, text, (text_x, text_y), font, font_scale, (255, 255, 255), font_thickness)
+
+    return background
 
   def run(self) -> None:
     self._generate_rules()
+    background = np.zeros((self.height, self.width, 3), dtype=np.uint8)
 
     while True:
-      frame = self._generate_frame()
+      frame = self._generate_frame(background)
       cv2.imshow('image', frame)
       cv2.waitKey(1)
