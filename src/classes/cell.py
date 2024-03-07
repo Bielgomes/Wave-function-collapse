@@ -56,6 +56,8 @@ class Cell:
 
       self._check_validity(options, valid_options)
 
-      if options != neighbor.possible_tiles:
+      if options != neighbor.possible_tiles and options != []:
         neighbor.possible_tiles = options
-        neighbor.propagate_changes_to_neighbors()
+        try:
+          neighbor.propagate_changes_to_neighbors()
+        except RecursionError: pass
